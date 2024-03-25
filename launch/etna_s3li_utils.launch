@@ -1,0 +1,14 @@
+<launch>
+    <!-- Set the parameter for using simulation time -->
+    <node pkg="rosparam" type="set" name="use_sim_time" args="use_sim_time true"/>
+
+    <!-- Robot state publisher node -->
+    <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher">
+        <param name="robot_description" textfile="$(find etna_s3li_playback)/urdf/sensors_setup.urdf"/>
+    </node>
+
+    <!-- IMU processor launch file -->
+    <include file="$(find imu_utils)/launch/imu_processor.launch">
+        <arg name="topic_in" value="/imu/data"/>
+    </include>
+</launch>

@@ -1,0 +1,57 @@
+<launch>
+    <!-- Set the parameter for using simulation time -->
+    <param name="use_sim_time" value="true"/>
+
+    <!-- Declare launch arguments -->
+    <arg name="visualize" default="true"/>
+    <arg name="playback" default="true"/>
+    <arg name="odom_recording" default="false"/>
+    <arg name="robot_localization" default="false"/>
+
+    <!-- Execute rosbag playback -->
+    <group if="$(arg playback)">
+        <node name="rosbag_playback" pkg="rosbag" type="play" args="$(find etna_s3li_playback)/bags/custom_rosbag2__1_double_round/custom_rosbag2__1_double_round_0.db3 --clock" output="screen"/>
+    </group>
+
+    <!-- RViz node -->
+    <group if="$(arg visualize)">
+        <node name="rviz" pkg="rviz" type="rviz" args="-d $(find etna_s3li_playback)/rviz/roxy_rviz_config.rviz" output="both"/>
+    </group>
+
+    <!-- Container fuse node -->
+    <node pkg="rclcpp_components" type="component_container_mt" name="container_fuse">
+        <param name="use_intra_process_comms" value="true"/>
+        <rosparam command="load" file="$(find etna_s3li_playback)/config/fixed_lag_smoother_roxy.yaml"/>
+        <remap from="fuse/odometry/filtered" to="fuse/odometry/filtered"/>
+    </node>
+
+    <!-- Fuse odom recorder node -->
+    <group if="$(arg odom_recording)">
+        <node name="fuse_odom_recorder" pkg="odometry_recorder" type="odometry_recorder_node" output="both">
+            <param name="topic_name" value="fuse/odometry/filtered"/>
+            <param name="output_file" value="fuse_odom.csv"/>
+        </node>
+    </group>
+
+    <!-- RL odom recorder node -->
+    <group if="$(arg odom_recording)">
+        <node name="rl_odom_recorder" pkg="odometry_recorder" type="odometry_recorder_node" output="both">
+            <param name="topic_name" value="odometry/filtered"/>
+            <param name="output_file" value="rl_odom.csv"/>
+        </node>
+    </group>
+
+    <!-- IMU transformer node -->
+    <node pkg="imu_transformer" type="imu_transformer_node" name="imu_transformer" output="screen">
+        <param name="target_frame" value="base_link"/>
+        <remap from="imu_in" to="/localisation/imu/data"/>
+        <remap from="imu_out" to="/localisation/imu/data_rotated"/>
+    </node>
+
+    <!-- Robot localization node -->
+    <group if="$(arg robot_localization)">
+        <node name="ekf_filter_node" pkg="robot_localization" type="ekf_node" output="screen">
+            <rosparam command="load" file="$(find etna_s3li_playback)/config/ekf_roxy.yaml"/>
+        </node>
+    </group>
+</launch>
